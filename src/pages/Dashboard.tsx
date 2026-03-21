@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Diamond, Heart, Send, Clock } from "lucide-react";
+import { LogOut, Diamond, Heart, Send, Clock, Sparkles } from "lucide-react";
 import { getSession, clearSession, getClientById, getValidatedCount, type Client } from "@/lib/store";
 import { VIPCard } from "@/components/VIPCard";
 import { ReferralHistory } from "@/components/ReferralHistory";
 import { WhatsAppShare } from "@/components/WhatsAppShare";
+import { ServicesCatalog } from "@/components/ServicesCatalog";
 import { RewardCelebration } from "@/components/RewardCelebration";
+import { BrandHeader } from "@/components/BrandHeader";
 
-type Tab = "card" | "history" | "invite";
+type Tab = "card" | "history" | "invite" | "services";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -39,6 +41,7 @@ export default function Dashboard() {
     { key: "card", label: "Cartão VIP", icon: Diamond },
     { key: "history", label: "Indicações", icon: Clock },
     { key: "invite", label: "Indicar", icon: Send },
+    { key: "services", label: "Serviços", icon: Sparkles },
   ];
 
   return (
@@ -46,12 +49,15 @@ export default function Dashboard() {
       {showReward && <RewardCelebration onClose={() => setShowReward(false)} />}
 
       {/* Header */}
-      <header className="px-6 pt-6 pb-4 flex items-center justify-between">
+      <header className="px-6 pt-5 pb-4 flex items-center justify-between">
         <div style={{ animation: "float-up 0.5s cubic-bezier(0.16,1,0.3,1) forwards" }}>
           <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground font-body">
             Bem-vinda
           </p>
           <h2 className="font-display text-xl text-foreground">{client.name}</h2>
+          <p className="text-[9px] tracking-[0.15em] text-gold font-body mt-0.5">
+            Criado por Lessa Lash Designer
+          </p>
         </div>
         <button
           onClick={() => { clearSession(); navigate("/"); }}
@@ -69,6 +75,7 @@ export default function Dashboard() {
           {tab === "card" && <VIPCard client={client} />}
           {tab === "history" && <ReferralHistory referrals={client.referrals} />}
           {tab === "invite" && <WhatsAppShare client={client} />}
+          {tab === "services" && <ServicesCatalog />}
         </div>
 
         {tab === "card" && (
@@ -90,7 +97,7 @@ export default function Dashboard() {
       </main>
 
       {/* Bottom tabs */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-t border-border/50 px-6 py-3">
+      <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-t border-border/50 px-4 py-3">
         <div className="flex justify-around max-w-sm mx-auto">
           {tabs.map((t) => (
             <button
