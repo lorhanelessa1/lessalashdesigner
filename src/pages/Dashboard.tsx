@@ -7,7 +7,6 @@ import { ReferralHistory } from "@/components/ReferralHistory";
 import { WhatsAppShare } from "@/components/WhatsAppShare";
 import { ServicesCatalog } from "@/components/ServicesCatalog";
 import { RewardCelebration } from "@/components/RewardCelebration";
-import { BrandHeader } from "@/components/BrandHeader";
 
 type Tab = "card" | "history" | "invite" | "services";
 
@@ -23,16 +22,19 @@ export default function Dashboard() {
       navigate("/");
       return;
     }
-    const c = getClientById(session.clientId);
-    if (!c) {
-      clearSession();
-      navigate("/");
-      return;
-    }
-    setClient(c);
-    if (getValidatedCount(c) >= 5) {
-      setShowReward(true);
-    }
+    const loadClient = async () => {
+      const c = await getClientById(session.clientId);
+      if (!c) {
+        clearSession();
+        navigate("/");
+        return;
+      }
+      setClient(c);
+      if (getValidatedCount(c) >= 5) {
+        setShowReward(true);
+      }
+    };
+    loadClient();
   }, [navigate]);
 
   if (!client) return null;
@@ -48,16 +50,11 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background flex flex-col">
       {showReward && <RewardCelebration onClose={() => setShowReward(false)} />}
 
-      {/* Header */}
       <header className="px-6 pt-5 pb-4 flex items-center justify-between">
         <div style={{ animation: "float-up 0.5s cubic-bezier(0.16,1,0.3,1) forwards" }}>
-          <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground font-body">
-            Bem-vinda
-          </p>
+          <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground font-body">Bem-vinda</p>
           <h2 className="font-display text-xl text-foreground">{client.name}</h2>
-          <p className="text-[9px] tracking-[0.15em] text-gold font-body mt-0.5">
-            Criado por Lessa Lash Designer
-          </p>
+          <p className="text-[9px] tracking-[0.15em] text-gold font-body mt-0.5">Criado por Lessa Lash Designer</p>
         </div>
         <button
           onClick={() => { clearSession(); navigate("/"); }}
@@ -67,11 +64,8 @@ export default function Dashboard() {
         </button>
       </header>
 
-      {/* Content */}
       <main className="flex-1 px-6 pb-24 space-y-6">
-        <div
-          style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 80ms forwards", opacity: 0 }}
-        >
+        <div style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 80ms forwards", opacity: 0 }}>
           {tab === "card" && <VIPCard client={client} />}
           {tab === "history" && <ReferralHistory referrals={client.referrals} />}
           {tab === "invite" && <WhatsAppShare client={client} />}
@@ -96,7 +90,6 @@ export default function Dashboard() {
         )}
       </main>
 
-      {/* Bottom tabs */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-t border-border/50 px-4 py-3">
         <div className="flex justify-around max-w-sm mx-auto">
           {tabs.map((t) => (

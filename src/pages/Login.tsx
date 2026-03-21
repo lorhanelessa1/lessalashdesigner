@@ -13,46 +13,63 @@ export default function Login() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setError("");
-    const client = getClientByPhone(phone);
-    if (!client) {
-      setError("Telefone não encontrado. Crie sua conta.");
-      return;
+    setLoading(true);
+    try {
+      const client = await getClientByPhone(phone);
+      if (!client) {
+        setError("Telefone não encontrado. Crie sua conta.");
+        return;
+      }
+      setSession(client.id, false);
+      navigate("/dashboard");
+    } finally {
+      setLoading(false);
     }
-    setSession(client.id, false);
-    navigate("/dashboard");
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setError("");
     if (!name.trim() || !phone.trim()) {
       setError("Preencha todos os campos obrigatórios.");
       return;
     }
-    if (getClientByPhone(phone)) {
-      setError("Este telefone já está cadastrado.");
-      return;
+    setLoading(true);
+    try {
+      const existing = await getClientByPhone(phone);
+      if (existing) {
+        setError("Este telefone já está cadastrado.");
+        return;
+      }
+      const client = await createClient(name, phone, email);
+      setSession(client.id, false);
+      navigate("/dashboard");
+    } finally {
+      setLoading(false);
     }
-    const client = createClient(name, phone, email);
-    setSession(client.id, false);
-    navigate("/dashboard");
   };
 
-  const handleAdmin = () => {
+  const handleAdmin = async () => {
     setError("");
-    if (!verifyAdminPin(pin)) {
-      setError("PIN inválido.");
-      return;
+    setLoading(true);
+    try {
+      const valid = await verifyAdminPin(pin);
+      if (!valid) {
+        setError("PIN inválido.");
+        return;
+      }
+      setSession("admin", true);
+      navigate("/admin");
+    } finally {
+      setLoading(false);
     }
-    setSession("admin", true);
-    navigate("/admin");
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative">
-      {/* Admin icon - top right, discrete */}
       <button
         onClick={() => setShowAdmin(true)}
         className="absolute top-5 right-5 w-8 h-8 rounded-full bg-muted/30 flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors"
@@ -60,12 +77,10 @@ export default function Login() {
         <Settings className="w-3.5 h-3.5" />
       </button>
 
-      {/* Brand */}
       <div style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) forwards" }} className="mb-10">
         <BrandHeader size="lg" />
       </div>
 
-      {/* Admin modal */}
       {showAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-onyx/60 backdrop-blur-sm px-6">
           <div
@@ -85,9 +100,10 @@ export default function Login() {
             )}
             <button
               onClick={handleAdmin}
-              className="w-full py-3 rounded-full gradient-gold text-primary-foreground font-body font-medium text-sm tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-md"
+              disabled={loading}
+              className="w-full py-3 rounded-full gradient-gold text-primary-foreground font-body font-medium text-sm tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-md disabled:opacity-50"
             >
-              Acessar Painel
+              {loading ? "Verificando..." : "Acessar Painel"}
             </button>
             <button
               onClick={() => { setShowAdmin(false); setError(""); setPin(""); }}
@@ -99,12 +115,10 @@ export default function Login() {
         </div>
       )}
 
-      {/* Card */}
       <div
         className="w-full max-w-sm rounded-2xl bg-card border border-border/50 shadow-xl p-6 space-y-5"
         style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 100ms forwards", opacity: 0 }}
       >
-        {/* Tabs */}
         <div className="flex gap-1 p-1 rounded-full bg-muted/50">
           {(["login", "register"] as const).map((m) => (
             <button
@@ -121,7 +135,6 @@ export default function Login() {
           ))}
         </div>
 
-        {/* Form */}
         <div className="space-y-3">
           {mode === "register" && (
             <input
@@ -132,7 +145,6 @@ export default function Login() {
               className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow"
             />
           )}
-
           <input
             type="tel"
             placeholder="Seu telefone"
@@ -140,7 +152,6 @@ export default function Login() {
             onChange={(e) => setPhone(e.target.value)}
             className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow"
           />
-
           {mode === "register" && (
             <input
               type="email"
@@ -158,9 +169,10 @@ export default function Login() {
 
         <button
           onClick={mode === "login" ? handleLogin : handleRegister}
-          className="w-full py-3 rounded-full gradient-gold text-primary-foreground font-body font-medium text-sm tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg"
+          disabled={loading}
+          className="w-full py-3 rounded-full gradient-gold text-primary-foreground font-body font-medium text-sm tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg disabled:opacity-50"
         >
-          {mode === "login" ? "Entrar" : "Criar Conta"}
+          {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar Conta"}
         </button>
       </div>
 

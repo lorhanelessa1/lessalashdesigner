@@ -1,8 +1,16 @@
+import { useState, useEffect } from "react";
 import { FileText, ExternalLink } from "lucide-react";
-import { getSettings } from "@/lib/store";
+import { getSettings, type AppSettings } from "@/lib/store";
 
 export function ServicesCatalog() {
-  const settings = getSettings();
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+
+  useEffect(() => {
+    getSettings().then(setSettings);
+  }, []);
+
+  if (!settings) return null;
+
   const hasCatalog = !!settings.catalogPdfUrl;
 
   return (
