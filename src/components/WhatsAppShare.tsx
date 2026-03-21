@@ -1,13 +1,21 @@
+import { useState, useEffect } from "react";
 import { MessageCircle } from "lucide-react";
 import type { Client } from "@/lib/store";
-import { getSettings } from "@/lib/store";
+import { getSettings, type AppSettings } from "@/lib/store";
 
 interface WhatsAppShareProps {
   client: Client;
 }
 
 export function WhatsAppShare({ client }: WhatsAppShareProps) {
-  const settings = getSettings();
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+
+  useEffect(() => {
+    getSettings().then(setSettings);
+  }, []);
+
+  if (!settings) return null;
+
   const whatsappNumber = settings.whatsappNumber.replace(/\D/g, "");
 
   const message = encodeURIComponent(

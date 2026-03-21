@@ -14,7 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      app_settings: {
+        Row: {
+          admin_pin: string
+          catalog_pdf_url: string | null
+          id: string
+          updated_at: string
+          whatsapp_number: string
+        }
+        Insert: {
+          admin_pin?: string
+          catalog_pdf_url?: string | null
+          id?: string
+          updated_at?: string
+          whatsapp_number?: string
+        }
+        Update: {
+          admin_pin?: string
+          catalog_pdf_url?: string | null
+          id?: string
+          updated_at?: string
+          whatsapp_number?: string
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string
+          referral_code: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone: string
+          referral_code: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string
+          referral_code?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          client_id: string
+          created_at: string
+          friend_name: string
+          friend_phone: string
+          id: string
+          validated: boolean
+          validated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          friend_name: string
+          friend_phone: string
+          id?: string
+          validated?: boolean
+          validated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          friend_name?: string
+          friend_phone?: string
+          id?: string
+          validated?: boolean
+          validated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
