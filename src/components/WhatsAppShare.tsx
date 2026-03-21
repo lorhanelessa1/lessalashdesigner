@@ -1,23 +1,27 @@
 import { MessageCircle } from "lucide-react";
 import type { Client } from "@/lib/store";
+import { getSettings } from "@/lib/store";
 
 interface WhatsAppShareProps {
   client: Client;
 }
 
 export function WhatsAppShare({ client }: WhatsAppShareProps) {
+  const settings = getSettings();
+  const whatsappNumber = settings.whatsappNumber.replace(/\D/g, "");
+
   const message = encodeURIComponent(
-    `Oi, amiga! 💕 Estou indicando uma lash designer incrível! Se você agendar com ela, nós duas ganhamos benefícios exclusivos ✨\n\nUse meu código VIP: ${client.referralCode}\n\nConheça agora: ${window.location.origin}?ref=${client.referralCode}`
+    `Oi, amiga! 💕 Preciso te indicar uma lash designer incrível! Atendimento impecável e resultados perfeitos ✨ Fala com ela aqui: https://wa.me/${whatsappNumber}\n\nMeu código VIP: ${client.referralCode}`
   );
 
-  const whatsappUrl = `https://wa.me/?text=${message}`;
+  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
 
   return (
     <div className="space-y-6 text-center">
       <div className="space-y-2">
         <h3 className="font-display text-xl text-foreground">Indique uma Amiga</h3>
         <p className="text-sm text-muted-foreground font-body max-w-xs mx-auto">
-          Compartilhe seu link exclusivo pelo WhatsApp e ganhe benefícios quando sua amiga agendar
+          Compartilhe pelo WhatsApp e ganhe benefícios quando sua amiga agendar
         </p>
       </div>
 
