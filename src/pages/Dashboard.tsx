@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Diamond, Heart, Send, Clock, Sparkles } from "lucide-react";
-import { getSession, clearSession, getClientById, getValidatedCount, type Client } from "@/lib/store";
+import { signOut, getClientByUserId, getValidatedCount, type Client } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
 import { VIPCard } from "@/components/VIPCard";
 import { ReferralHistory } from "@/components/ReferralHistory";
 import { WhatsAppShare } from "@/components/WhatsAppShare";
@@ -17,15 +18,14 @@ export default function Dashboard() {
   const [showReward, setShowReward] = useState(false);
 
   useEffect(() => {
-    const session = getSession();
-    if (!session || session.isAdmin) {
-      navigate("/");
-      return;
-    }
     const loadClient = async () => {
-      const c = await getClientById(session.clientId);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/");
+        return;
+      }
+      const c = await getClientByUserId(user.id);
       if (!c) {
-        clearSession();
         navigate("/");
         return;
       }
@@ -35,6 +35,11 @@ export default function Dashboard() {
       }
     };
     loadClient();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") navigate("/");
+    });
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   if (!client) return null;
@@ -54,10 +59,9 @@ export default function Dashboard() {
         <div style={{ animation: "float-up 0.5s cubic-bezier(0.16,1,0.3,1) forwards" }}>
           <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground font-body">Bem-vinda</p>
           <h2 className="font-display text-xl text-foreground">{client.name}</h2>
-          <p className="text-[9px] tracking-[0.15em] text-gold font-body mt-0.5">Criado por Lessa Lash Designer</p>
         </div>
         <button
-          onClick={() => { clearSession(); navigate("/"); }}
+          onClick={async () => { await signOut(); navigate("/"); }}
           className="w-9 h-9 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors duration-200 active:scale-95"
         >
           <LogOut className="w-4 h-4" />
@@ -106,6 +110,12 @@ export default function Dashboard() {
           ))}
         </div>
       </nav>
+
+      <div className="fixed bottom-16 left-0 right-0 text-center pb-1">
+        <p className="text-[8px] tracking-[0.12em] text-gold/40 font-body">
+          Criado por Lessa Lash Designer
+        </p>
+      </div>
     </div>
   );
 }
