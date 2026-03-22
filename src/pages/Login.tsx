@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings, Sparkles } from "lucide-react";
-import { signIn, signUp, verifyAdminPin, getSettings } from "@/lib/store";
+import { Settings, Sparkles, ArrowLeft } from "lucide-react";
+import { signIn, signUp, verifyAdminPin } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import { ServicesCatalog } from "@/components/ServicesCatalog";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "register" | "services">("login");
+  const [mode, setMode] = useState<"login" | "register" | "services" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -59,8 +59,7 @@ export default function Login() {
     setLoading(true);
     try {
       await signUp(email, password, name, phone);
-      setSuccess("Conta criada! Verifique seu email para confirmar.");
-      setMode("login");
+      // Auto-confirm is enabled, user will be logged in automatically
     } catch (e: any) {
       setError(e.message?.includes("already registered") ? "Este email já está cadastrado." : e.message);
     } finally {
@@ -224,6 +223,15 @@ export default function Login() {
           >
             {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar Conta"}
           </button>
+
+          {mode === "login" && (
+            <button
+              onClick={() => { setMode("forgot"); setError(""); setSuccess(""); }}
+              className="w-full text-xs text-muted-foreground font-body hover:text-gold transition-colors"
+            >
+              Esqueci minha senha
+            </button>
+          )}
         </div>
       )}
 
