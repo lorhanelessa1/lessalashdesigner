@@ -131,7 +131,52 @@ export default function Login() {
         </div>
       )}
 
-      {mode === "services" ? (
+      {mode === "forgot" ? (
+        <div
+          className="w-full max-w-sm rounded-2xl bg-card border border-border/50 shadow-xl p-6 space-y-5"
+          style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 100ms forwards", opacity: 0 }}
+        >
+          <button
+            onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
+            className="flex items-center gap-1 text-xs text-gold font-body font-medium active:scale-95 transition-transform"
+          >
+            <ArrowLeft className="w-3 h-3" /> Voltar
+          </button>
+          <div className="text-center space-y-1">
+            <h3 className="font-display text-lg">Recuperar Senha</h3>
+            <p className="text-xs text-muted-foreground font-body">Digite seu email para receber o link de recuperação</p>
+          </div>
+          <input
+            type="email"
+            placeholder="Seu email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow"
+          />
+          {error && <p className="text-xs text-destructive font-body text-center">{error}</p>}
+          {success && <p className="text-xs text-gold-dark font-body text-center">{success}</p>}
+          <button
+            onClick={async () => {
+              setError(""); setSuccess("");
+              if (!email.trim()) { setError("Digite seu email."); return; }
+              setLoading(true);
+              try {
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                  redirectTo: `${window.location.origin}/reset-password`,
+                });
+                if (error) throw error;
+                setSuccess("Link de recuperação enviado! Verifique seu email.");
+              } catch (e: any) {
+                setError(e.message);
+              } finally { setLoading(false); }
+            }}
+            disabled={loading}
+            className="w-full py-3 rounded-full gradient-gold text-primary-foreground font-body font-medium text-sm tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-md disabled:opacity-50"
+          >
+            {loading ? "Enviando..." : "Enviar Link"}
+          </button>
+        </div>
+      ) : mode === "services" ? (
         <div
           className="w-full max-w-sm rounded-2xl bg-card border border-border/50 shadow-xl p-6 space-y-5"
           style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 100ms forwards", opacity: 0 }}
