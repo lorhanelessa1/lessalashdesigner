@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  getSession, clearSession, getClients, addReferral, validateReferral,
-  getSettings, saveSettings, deleteClient, getClientById,
+  getClients, addReferral, validateReferral,
+  getSettings, saveSettings, deleteClient,
   type Client,
 } from "@/lib/store";
 import { LogOut, UserPlus, Users, Check, Diamond, ChevronRight, Settings, Phone, FileText, Trash2, Shield } from "lucide-react";
@@ -30,8 +30,8 @@ export default function Admin() {
   };
 
   useEffect(() => {
-    const session = getSession();
-    if (!session?.isAdmin) {
+    const isAdmin = localStorage.getItem("lash_admin");
+    if (!isAdmin) {
       navigate("/");
       return;
     }
@@ -53,19 +53,13 @@ export default function Admin() {
     setLoading(true);
     try {
       const r = await addReferral(selected.id, friendName, friendPhone);
-      if (!r) {
-        setMsg("Limite de indicações atingido.");
-        return;
-      }
-      setFriendName("");
-      setFriendPhone("");
+      if (!r) { setMsg("Limite de indicações atingido."); return; }
+      setFriendName(""); setFriendPhone("");
       setMsg("Indicação adicionada!");
       const updatedClients = await refresh();
       setSelected(updatedClients.find(c => c.id === selected.id) || null);
       setTimeout(() => setMsg(""), 2000);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const handleValidate = async (referralId: string) => {
@@ -88,16 +82,10 @@ export default function Admin() {
   const handleSaveSettings = async () => {
     setLoading(true);
     try {
-      await saveSettings({
-        whatsappNumber,
-        catalogPdfUrl: catalogUrl,
-        adminPin: adminPin || "1234",
-      });
+      await saveSettings({ whatsappNumber, catalogPdfUrl: catalogUrl, adminPin: adminPin || "1234" });
       setMsg("Configurações salvas!");
       setTimeout(() => setMsg(""), 2000);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
@@ -109,18 +97,10 @@ export default function Admin() {
           <p className="text-[9px] tracking-[0.15em] text-gold font-body mt-0.5">Lessa Lash Designer</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setView("settings")}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors active:scale-95 ${
-              view === "settings" ? "bg-gold/20 text-gold" : "bg-muted/50 text-muted-foreground hover:text-foreground"
-            }`}
-          >
+          <button onClick={() => setView("settings")} className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors active:scale-95 ${view === "settings" ? "bg-gold/20 text-gold" : "bg-muted/50 text-muted-foreground hover:text-foreground"}`}>
             <Settings className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => { clearSession(); navigate("/"); }}
-            className="w-9 h-9 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors active:scale-95"
-          >
+          <button onClick={() => { localStorage.removeItem("lash_admin"); navigate("/"); }} className="w-9 h-9 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors active:scale-95">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -135,17 +115,14 @@ export default function Admin() {
               <div className="p-4 rounded-xl bg-card border border-border/50 shadow-sm space-y-2">
                 <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-gold" /><label className="text-sm font-body font-medium">WhatsApp de Trabalho</label></div>
                 <input type="tel" placeholder="5511999999999" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow" />
-                <p className="text-[10px] text-muted-foreground font-body">Número com código do país (ex: 5511999999999)</p>
               </div>
               <div className="p-4 rounded-xl bg-card border border-border/50 shadow-sm space-y-2">
                 <div className="flex items-center gap-2"><FileText className="w-4 h-4 text-gold" /><label className="text-sm font-body font-medium">Catálogo PDF (URL)</label></div>
                 <input type="url" placeholder="https://exemplo.com/catalogo.pdf" value={catalogUrl} onChange={(e) => setCatalogUrl(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow" />
-                <p className="text-[10px] text-muted-foreground font-body">Link direto do PDF do seu catálogo de serviços</p>
               </div>
               <div className="p-4 rounded-xl bg-card border border-border/50 shadow-sm space-y-2">
                 <div className="flex items-center gap-2"><Shield className="w-4 h-4 text-gold" /><label className="text-sm font-body font-medium">PIN Admin</label></div>
                 <input type="password" placeholder="****" value={adminPin} onChange={(e) => setAdminPin(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow" />
-                <p className="text-[10px] text-muted-foreground font-body">PIN de acesso ao painel administrativo</p>
               </div>
             </div>
             {msg && <p className="text-xs font-body text-center text-gold-dark">{msg}</p>}
@@ -237,6 +214,10 @@ export default function Admin() {
           </>
         )}
       </main>
+
+      <footer className="py-4 text-center">
+        <p className="text-[9px] tracking-[0.15em] text-gold/50 font-body">Criado por Lessa Lash Designer</p>
+      </footer>
     </div>
   );
 }

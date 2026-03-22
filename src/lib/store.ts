@@ -8,6 +8,7 @@ export interface Client {
   referralCode: string;
   referrals: Referral[];
   createdAt: string;
+  userId?: string;
 }
 
 export interface Referral {
@@ -35,6 +36,49 @@ function generateCode(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+// --- Auth ---
+export async function signUp(email: string, password: string, name: string, phone: string) {
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) throw error;
+  if (!data.user) throw new Error("Erro ao criar conta");
+
+  // Create client profile linked to auth user
+  const { error: clientError } = await supabase.from("clients").insert({
+    user_id: data.user.id,
+    name,
+    phone,
+    email,
+    referral_code: generateCode(),
+  });
+  if (clientError) throw clientError;
+  return data;
+}
+
+export async function signIn(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data;
+}
+
+export async function signOut() {
+  await supabase.auth.signOut();
+}
+
+export async function getCurrentUser() {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
+
+export async function getClientByUserId(userId: string): Promise<Client | undefined> {
+  const { data } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!data) return undefined;
+  return mapClientFromDb(data);
+}
+
 // --- Settings ---
 export async function getSettings(): Promise<AppSettings> {
   const { data } = await supabase
@@ -44,7 +88,6 @@ export async function getSettings(): Promise<AppSettings> {
     .single();
 
   if (!data) return { ...DEFAULT_SETTINGS };
-
   return {
     whatsappNumber: data.whatsapp_number,
     catalogPdfUrl: data.catalog_pdf_url || "",
@@ -55,23 +98,13 @@ export async function getSettings(): Promise<AppSettings> {
 export async function saveSettings(settings: Partial<AppSettings>) {
   const current = await getSettings();
   const merged = { ...current, ...settings };
-
-  // Get existing row id
-  const { data: existing } = await supabase
-    .from("app_settings")
-    .select("id")
-    .limit(1)
-    .single();
-
+  const { data: existing } = await supabase.from("app_settings").select("id").limit(1).single();
   if (existing) {
-    await supabase
-      .from("app_settings")
-      .update({
-        whatsapp_number: merged.whatsappNumber,
-        catalog_pdf_url: merged.catalogPdfUrl,
-        admin_pin: merged.adminPin,
-      })
-      .eq("id", existing.id);
+    await supabase.from("app_settings").update({
+      whatsapp_number: merged.whatsappNumber,
+      catalog_pdf_url: merged.catalogPdfUrl,
+      admin_pin: merged.adminPin,
+    }).eq("id", existing.id);
   }
 }
 
@@ -89,6 +122,7 @@ async function mapClientFromDb(row: any): Promise<Client> {
     phone: row.phone,
     email: row.email || "",
     referralCode: row.referral_code,
+    userId: row.user_id || undefined,
     referrals: (referrals || []).map((r: any) => ({
       id: r.id,
       friendName: r.friend_name,
@@ -102,66 +136,24 @@ async function mapClientFromDb(row: any): Promise<Client> {
 }
 
 export async function getClients(): Promise<Client[]> {
-  const { data } = await supabase
-    .from("clients")
-    .select("*")
-    .order("created_at", { ascending: false });
-
+  const { data } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
   if (!data) return [];
-
   return Promise.all(data.map(mapClientFromDb));
 }
 
-export async function getClientByPhone(phone: string): Promise<Client | undefined> {
-  const { data } = await supabase
-    .from("clients")
-    .select("*")
-    .eq("phone", phone)
-    .maybeSingle();
-
-  if (!data) return undefined;
-  return mapClientFromDb(data);
-}
-
 export async function getClientById(id: string): Promise<Client | undefined> {
-  const { data } = await supabase
-    .from("clients")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-
+  const { data } = await supabase.from("clients").select("*").eq("id", id).maybeSingle();
   if (!data) return undefined;
-  return mapClientFromDb(data);
-}
-
-export async function createClient(name: string, phone: string, email: string): Promise<Client> {
-  const { data, error } = await supabase
-    .from("clients")
-    .insert({
-      name,
-      phone,
-      email,
-      referral_code: generateCode(),
-    })
-    .select()
-    .single();
-
-  if (error || !data) throw new Error("Erro ao criar cliente");
   return mapClientFromDb(data);
 }
 
 export async function deleteClient(clientId: string): Promise<boolean> {
-  const { error } = await supabase
-    .from("clients")
-    .delete()
-    .eq("id", clientId);
-
+  const { error } = await supabase.from("clients").delete().eq("id", clientId);
   return !error;
 }
 
 // --- Referrals ---
 export async function addReferral(clientId: string, friendName: string, friendPhone: string): Promise<Referral | null> {
-  // Check current count
   const { count } = await supabase
     .from("referrals")
     .select("*", { count: "exact", head: true })
@@ -171,16 +163,11 @@ export async function addReferral(clientId: string, friendName: string, friendPh
 
   const { data, error } = await supabase
     .from("referrals")
-    .insert({
-      client_id: clientId,
-      friend_name: friendName,
-      friend_phone: friendPhone,
-    })
+    .insert({ client_id: clientId, friend_name: friendName, friend_phone: friendPhone })
     .select()
     .single();
 
   if (error || !data) return null;
-
   return {
     id: data.id,
     friendName: data.friend_name,
@@ -194,16 +181,11 @@ export async function addReferral(clientId: string, friendName: string, friendPh
 export async function validateReferral(clientId: string, referralId: string, pin: string): Promise<boolean> {
   const settings = await getSettings();
   if (pin !== settings.adminPin) return false;
-
   const { error } = await supabase
     .from("referrals")
-    .update({
-      validated: true,
-      validated_at: new Date().toISOString(),
-    })
+    .update({ validated: true, validated_at: new Date().toISOString() })
     .eq("id", referralId)
     .eq("client_id", clientId);
-
   return !error;
 }
 
@@ -214,20 +196,4 @@ export function getValidatedCount(client: Client): number {
 export async function verifyAdminPin(pin: string): Promise<boolean> {
   const settings = await getSettings();
   return pin === settings.adminPin;
-}
-
-// --- Session (still localStorage, just for UI state) ---
-const SESSION_KEY = "lash_vip_session";
-
-export function setSession(clientId: string, isAdmin: boolean) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ clientId, isAdmin }));
-}
-
-export function getSession(): { clientId: string; isAdmin: boolean } | null {
-  const d = localStorage.getItem(SESSION_KEY);
-  return d ? JSON.parse(d) : null;
-}
-
-export function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
 }
