@@ -42,12 +42,11 @@ export async function signUp(email: string, password: string, name: string, phon
   if (error) throw error;
   if (!data.user) throw new Error("Erro ao criar conta");
 
-  // Create client profile linked to auth user
   const { error: clientError } = await supabase.from("clients").insert({
     user_id: data.user.id,
     name,
     phone,
-    email,
+    email: null,
     referral_code: generateCode(),
   });
   if (clientError) throw clientError;
