@@ -9,10 +9,10 @@ import { ServicesCatalog } from "@/components/ServicesCatalog";
 export default function Login() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "register" | "services" | "forgot">("login");
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [showAdmin, setShowAdmin] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
@@ -21,26 +21,27 @@ export default function Login() {
 
   useEffect(() => {
     supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        navigate("/dashboard");
-      }
+      if (session?.user) navigate("/dashboard");
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) navigate("/dashboard");
     });
   }, [navigate]);
 
+  // Use phone as email for Supabase auth (phone@lashvip.app)
+  const phoneToEmail = (p: string) => `${p.replace(/\D/g, "")}@lashvip.app`;
+
   const handleLogin = async () => {
     setError("");
-    if (!email.trim() || !password.trim()) {
-      setError("Preencha email e senha.");
+    if (!phone.trim() || !password.trim()) {
+      setError("Preencha celular e senha.");
       return;
     }
     setLoading(true);
     try {
-      await signIn(email, password);
+      await signIn(phoneToEmail(phone), password);
     } catch (e: any) {
-      setError(e.message === "Invalid login credentials" ? "Email ou senha inválidos." : e.message);
+      setError(e.message === "Invalid login credentials" ? "Celular ou senha inválidos." : e.message);
     } finally {
       setLoading(false);
     }
@@ -48,7 +49,7 @@ export default function Login() {
 
   const handleRegister = async () => {
     setError("");
-    if (!name.trim() || !email.trim() || !password.trim() || !phone.trim()) {
+    if (!name.trim() || !phone.trim() || !password.trim()) {
       setError("Preencha todos os campos.");
       return;
     }
@@ -58,10 +59,9 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      await signUp(email, password, name, phone);
-      // Auto-confirm is enabled, user will be logged in automatically
+      await signUp(phoneToEmail(phone), password, name, phone);
     } catch (e: any) {
-      setError(e.message?.includes("already registered") ? "Este email já está cadastrado." : e.message);
+      setError(e.message?.includes("already registered") ? "Este celular já está cadastrado." : e.message);
     } finally {
       setLoading(false);
     }
@@ -72,16 +72,10 @@ export default function Login() {
     setLoading(true);
     try {
       const valid = await verifyAdminPin(pin);
-      if (!valid) {
-        setError("PIN inválido.");
-        return;
-      }
-      // Admin uses a special login - store in localStorage for now
+      if (!valid) { setError("PIN inválido."); return; }
       localStorage.setItem("lash_admin", "true");
       navigate("/admin");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
@@ -99,101 +93,56 @@ export default function Login() {
 
       {showAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-onyx/60 backdrop-blur-sm px-6">
-          <div
-            className="w-full max-w-sm rounded-2xl bg-card border border-border/50 shadow-xl p-6 space-y-4"
-            style={{ animation: "float-up 0.4s cubic-bezier(0.16,1,0.3,1) forwards" }}
-          >
+          <div className="w-full max-w-sm rounded-2xl bg-card border border-border/50 shadow-xl p-6 space-y-4" style={{ animation: "float-up 0.4s cubic-bezier(0.16,1,0.3,1) forwards" }}>
             <h3 className="font-display text-lg text-center">Acesso Admin</h3>
-            <input
-              type="password"
-              placeholder="PIN da administradora"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow"
-            />
-            {error && showAdmin && (
-              <p className="text-xs text-destructive font-body text-center">{error}</p>
-            )}
-            <button
-              onClick={handleAdmin}
-              disabled={loading}
-              className="w-full py-3 rounded-full gradient-gold text-primary-foreground font-body font-medium text-sm tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-md disabled:opacity-50"
-            >
+            <input type="password" placeholder="PIN da administradora" value={pin} onChange={(e) => setPin(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow" />
+            {error && showAdmin && <p className="text-xs text-destructive font-body text-center">{error}</p>}
+            <button onClick={handleAdmin} disabled={loading} className="w-full py-3 rounded-full gradient-gold text-primary-foreground font-body font-medium text-sm tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-md disabled:opacity-50">
               {loading ? "Verificando..." : "Acessar Painel"}
             </button>
-            <button
-              onClick={() => { setShowAdmin(false); setError(""); setPin(""); }}
-              className="w-full py-2 text-xs text-muted-foreground font-body"
-            >
-              Cancelar
-            </button>
+            <button onClick={() => { setShowAdmin(false); setError(""); setPin(""); }} className="w-full py-2 text-xs text-muted-foreground font-body">Cancelar</button>
           </div>
         </div>
       )}
 
       {mode === "forgot" ? (
-        <div
-          className="w-full max-w-sm rounded-2xl bg-card border border-border/50 shadow-xl p-6 space-y-5"
-          style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 100ms forwards", opacity: 0 }}
-        >
-          <button
-            onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
-            className="flex items-center gap-1 text-xs text-gold font-body font-medium active:scale-95 transition-transform"
-          >
+        <div className="w-full max-w-sm rounded-2xl bg-card border border-border/50 shadow-xl p-6 space-y-5" style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 100ms forwards", opacity: 0 }}>
+          <button onClick={() => { setMode("login"); setError(""); setSuccess(""); }} className="flex items-center gap-1 text-xs text-gold font-body font-medium active:scale-95 transition-transform">
             <ArrowLeft className="w-3 h-3" /> Voltar
           </button>
           <div className="text-center space-y-1">
             <h3 className="font-display text-lg">Recuperar Senha</h3>
-            <p className="text-xs text-muted-foreground font-body">Digite seu email para receber o link de recuperação</p>
+            <p className="text-xs text-muted-foreground font-body">Digite seu celular para recuperar o acesso</p>
           </div>
-          <input
-            type="email"
-            placeholder="Seu email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow"
-          />
+          <input type="tel" placeholder="Seu celular" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow" />
           {error && <p className="text-xs text-destructive font-body text-center">{error}</p>}
           {success && <p className="text-xs text-gold-dark font-body text-center">{success}</p>}
           <button
             onClick={async () => {
               setError(""); setSuccess("");
-              if (!email.trim()) { setError("Digite seu email."); return; }
+              if (!phone.trim()) { setError("Digite seu celular."); return; }
               setLoading(true);
               try {
-                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                const { error } = await supabase.auth.resetPasswordForEmail(phoneToEmail(phone), {
                   redirectTo: `${window.location.origin}/reset-password`,
                 });
                 if (error) throw error;
-                setSuccess("Link de recuperação enviado! Verifique seu email.");
-              } catch (e: any) {
-                setError(e.message);
-              } finally { setLoading(false); }
+                setSuccess("Procure a administradora para redefinir sua senha.");
+              } catch (e: any) { setError(e.message); } finally { setLoading(false); }
             }}
             disabled={loading}
             className="w-full py-3 rounded-full gradient-gold text-primary-foreground font-body font-medium text-sm tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-md disabled:opacity-50"
           >
-            {loading ? "Enviando..." : "Enviar Link"}
+            {loading ? "Enviando..." : "Recuperar Senha"}
           </button>
         </div>
       ) : mode === "services" ? (
-        <div
-          className="w-full max-w-sm rounded-2xl bg-card border border-border/50 shadow-xl p-6 space-y-5"
-          style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 100ms forwards", opacity: 0 }}
-        >
-          <button
-            onClick={() => setMode("login")}
-            className="text-xs text-gold font-body font-medium active:scale-95 transition-transform"
-          >
-            ← Voltar
-          </button>
+        <div className="w-full max-w-sm rounded-2xl bg-card border border-border/50 shadow-xl p-6 space-y-5" style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 100ms forwards", opacity: 0 }}>
+          <button onClick={() => setMode("login")} className="text-xs text-gold font-body font-medium active:scale-95 transition-transform">← Voltar</button>
           <ServicesCatalog />
         </div>
       ) : (
-        <div
-          className="w-full max-w-sm rounded-2xl bg-card border border-border/50 shadow-xl p-6 space-y-5"
-          style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 100ms forwards", opacity: 0 }}
-        >
+        <div className="w-full max-w-sm rounded-2xl bg-card border border-border/50 shadow-xl p-6 space-y-5" style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 100ms forwards", opacity: 0 }}>
           <div className="flex gap-1 p-1 rounded-full bg-muted/50">
             {([
               { key: "login" as const, label: "Entrar" },
@@ -204,16 +153,11 @@ export default function Login() {
                 key={m.key}
                 onClick={() => { setMode(m.key); setError(""); setSuccess(""); }}
                 className={`flex-1 text-xs font-body font-medium py-2 rounded-full transition-all duration-200 ${
-                  mode === m.key
-                    ? "gradient-gold text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                  mode === m.key ? "gradient-gold text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {m.key === "services" ? (
-                  <span className="flex items-center justify-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    {m.label}
-                  </span>
+                  <span className="flex items-center justify-center gap-1"><Sparkles className="w-3 h-3" />{m.label}</span>
                 ) : m.label}
               </button>
             ))}
@@ -221,74 +165,29 @@ export default function Login() {
 
           <div className="space-y-3">
             {mode === "register" && (
-              <>
-                <input
-                  type="text"
-                  placeholder="Seu nome"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow"
-                />
-                <input
-                  type="tel"
-                  placeholder="Seu telefone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow"
-                />
-              </>
+              <input type="text" placeholder="Seu nome" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow" />
             )}
-            <input
-              type="email"
-              placeholder="Seu email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow"
-            />
-            <input
-              type="password"
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow"
-            />
+            <input type="tel" placeholder="Seu celular" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow" />
+            <input type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow" />
           </div>
 
-          {error && !showAdmin && (
-            <p className="text-xs text-destructive font-body text-center">{error}</p>
-          )}
-          {success && (
-            <p className="text-xs text-gold-dark font-body text-center">{success}</p>
-          )}
+          {error && !showAdmin && <p className="text-xs text-destructive font-body text-center">{error}</p>}
+          {success && <p className="text-xs text-gold-dark font-body text-center">{success}</p>}
 
-          <button
-            onClick={mode === "login" ? handleLogin : handleRegister}
-            disabled={loading}
-            className="w-full py-3 rounded-full gradient-gold text-primary-foreground font-body font-medium text-sm tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg disabled:opacity-50"
-          >
+          <button onClick={mode === "login" ? handleLogin : handleRegister} disabled={loading} className="w-full py-3 rounded-full gradient-gold text-primary-foreground font-body font-medium text-sm tracking-wide transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg disabled:opacity-50">
             {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar Conta"}
           </button>
 
           {mode === "login" && (
-            <button
-              onClick={() => { setMode("forgot"); setError(""); setSuccess(""); }}
-              className="w-full text-xs text-muted-foreground font-body hover:text-gold transition-colors"
-            >
+            <button onClick={() => { setMode("forgot"); setError(""); setSuccess(""); }} className="w-full text-xs text-muted-foreground font-body hover:text-gold transition-colors">
               Esqueci minha senha
             </button>
           )}
         </div>
       )}
 
-      <p
-        className="mt-8 text-[10px] tracking-[0.2em] uppercase text-muted-foreground/60 font-body"
-        style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 200ms forwards", opacity: 0 }}
-      >
+      <p className="mt-8 text-[10px] tracking-[0.2em] uppercase text-muted-foreground/60 font-body" style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 200ms forwards", opacity: 0 }}>
         Exclusivo para clientes VIP
-      </p>
-
-      <p className="mt-4 text-[9px] tracking-[0.15em] text-gold/60 font-body">
-        Criado por Lessa Lash Designer
       </p>
     </div>
   );
