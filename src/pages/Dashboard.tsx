@@ -16,30 +16,47 @@ export default function Dashboard() {
   const [client, setClient] = useState<Client | null>(null);
   const [tab, setTab] = useState<Tab>("card");
   const [showReward, setShowReward] = useState(false);
+  const [newlyValidated, setNewlyValidated] = useState<string[]>([]);
+
+  const refreshClient = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { navigate("/"); return; }
+    const c = await getClientByUserId(user.id);
+    if (!c) { navigate("/"); return; }
+    setClient(prev => {
+      // Track newly validated for animation
+      if (prev) {
+        const prevValidated = prev.referrals.filter(r => r.validated).map(r => r.id);
+        const newValidated = c.referrals.filter(r => r.validated && !prevValidated.includes(r.id));
+        if (newValidated.length > 0) {
+          setNewlyValidated(newValidated.map(r => r.id));
+          setTimeout(() => setNewlyValidated([]), 2000);
+        }
+      }
+      return c;
+    });
+    if (getValidatedCount(c) >= 5) setShowReward(true);
+  };
 
   useEffect(() => {
-    const loadClient = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/");
-        return;
-      }
-      const c = await getClientByUserId(user.id);
-      if (!c) {
-        navigate("/");
-        return;
-      }
-      setClient(c);
-      if (getValidatedCount(c) >= 5) {
-        setShowReward(true);
-      }
-    };
-    loadClient();
+    refreshClient();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") navigate("/");
     });
-    return () => subscription.unsubscribe();
+
+    // Realtime: listen for referral changes
+    const channel = supabase
+      .channel('client-referrals')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'referrals' }, () => {
+        refreshClient();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+      supabase.removeChannel(channel);
+    };
   }, [navigate]);
 
   if (!client) return null;
@@ -70,7 +87,7 @@ export default function Dashboard() {
 
       <main className="flex-1 px-6 pb-24 space-y-6">
         <div style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 80ms forwards", opacity: 0 }}>
-          {tab === "card" && <VIPCard client={client} />}
+          {tab === "card" && <VIPCard client={client} newlyValidated={newlyValidated} />}
           {tab === "history" && <ReferralHistory referrals={client.referrals} />}
           {tab === "invite" && <WhatsAppShare client={client} />}
           {tab === "services" && <ServicesCatalog />}
@@ -111,11 +128,6 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="fixed bottom-16 left-0 right-0 text-center pb-1">
-        <p className="text-[8px] tracking-[0.12em] text-gold/40 font-body">
-          Criado por Lessa Lash Designer
-        </p>
-      </div>
     </div>
   );
 }
