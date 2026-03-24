@@ -4,12 +4,14 @@ import { getValidatedCount } from "@/lib/store";
 
 interface VIPCardProps {
   client: Client;
+  newlyValidated?: string[];
 }
 
-export function VIPCard({ client }: VIPCardProps) {
+export function VIPCard({ client, newlyValidated = [] }: VIPCardProps) {
   const validated = getValidatedCount(client);
   const total = 5;
   const progress = (validated / total) * 100;
+  const hasNewValidation = newlyValidated.length > 0;
 
   return (
     <div className="relative rounded-2xl overflow-hidden gradient-gold p-[1px]">
@@ -29,19 +31,19 @@ export function VIPCard({ client }: VIPCardProps) {
         <div className="flex justify-center items-center gap-4">
           {Array.from({ length: total }).map((_, i) => {
             const filled = i < validated;
+            const isNew = filled && i === validated - 1 && hasNewValidation;
             return (
               <div
                 key={i}
-                className="relative flex items-center justify-center"
-                style={{ animationDelay: `${i * 100}ms` }}
+                className={`relative flex items-center justify-center ${isNew ? "animate-bounce-jewel" : ""}`}
               >
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 ${
                     filled
                       ? "gradient-gold shadow-[0_0_16px_hsla(38,45%,55%,0.4)]"
                       : "border-2 border-dashed border-gold-light/40 bg-muted/30"
-                  }`}
-                  style={filled ? { animation: "jewel-fill 0.5s cubic-bezier(0.16,1,0.3,1) forwards" } : {}}
+                  } ${isNew ? "ring-2 ring-gold-light ring-offset-2 ring-offset-card" : ""}`}
+                  style={isNew ? { animation: "jewel-pop 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards" } : {}}
                 >
                   <Diamond
                     className={`w-4 h-4 transition-colors duration-300 ${
@@ -59,6 +61,12 @@ export function VIPCard({ client }: VIPCardProps) {
                     }}
                   />
                 )}
+                {isNew && (
+                  <>
+                    <div className="absolute w-3 h-3 rounded-full bg-gold-light/60 animate-ping" />
+                    <div className="absolute -inset-1 rounded-full bg-gold-light/20 animate-pulse" />
+                  </>
+                )}
               </div>
             );
           })}
@@ -73,7 +81,7 @@ export function VIPCard({ client }: VIPCardProps) {
           <div className="h-1.5 rounded-full bg-muted overflow-hidden">
             <div
               className="h-full rounded-full gradient-gold transition-all duration-700 ease-out"
-              style={{ width: `${progress}%`, animation: "progress-fill 1s ease-out" }}
+              style={{ width: `${progress}%`, animation: hasNewValidation ? "progress-fill 1s ease-out" : undefined }}
             />
           </div>
         </div>
