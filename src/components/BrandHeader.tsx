@@ -12,7 +12,7 @@ export function BrandHeader({ size = "lg" }: BrandHeaderProps) {
       <img
         src={logo}
         alt="Lessa Lash Designer"
-        className={`mx-auto object-contain ${isLg ? "w-32 h-32" : "w-14 h-14"}`}
+        className={`mx-auto object-contain ${isLg ? "w-40 h-40" : "w-12 h-12"}`}
       />
 
       {isLg && (
