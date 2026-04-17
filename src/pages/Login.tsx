@@ -41,7 +41,8 @@ export default function Login() {
     try {
       await signIn(phoneToEmail(phone), password);
     } catch (e: any) {
-      setError(e.message === "Invalid login credentials" ? "Celular ou senha inválidos." : e.message);
+      const message = e.message || "";
+      setError(message === "Invalid login credentials" ? "Celular ou senha inválidos." : message);
     } finally {
       setLoading(false);
     }
@@ -49,19 +50,34 @@ export default function Login() {
 
   const handleRegister = async () => {
     setError("");
-    if (!name.trim() || !phone.trim() || !password.trim()) {
-      setError("Preencha todos os campos.");
+    if (!phone.trim() || !password.trim()) {
+      setError("Preencha celular e senha.");
       return;
     }
     if (password.length < 6) {
       setError("A senha deve ter pelo menos 6 caracteres.");
       return;
     }
+
+    const fallbackName = name.trim() || phone;
+
     setLoading(true);
     try {
-      await signUp(phoneToEmail(phone), password, name, phone);
+      await signUp(phoneToEmail(phone), password, fallbackName, phone);
     } catch (e: any) {
-      setError(e.message?.includes("already registered") ? "Este celular já está cadastrado." : e.message);
+      const message = e.message || "";
+
+      if (message.includes("already registered")) {
+        try {
+          await signIn(phoneToEmail(phone), password);
+          return;
+        } catch {
+          setError("Este celular já está cadastrado. Tente entrar com sua senha.");
+          return;
+        }
+      }
+
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -71,11 +87,16 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const valid = await verifyAdminPin(pin);
-      if (!valid) { setError("PIN inválido."); return; }
+      const valid = await verifyAdminPin(pin.trim());
+      if (!valid) {
+        setError("PIN inválido.");
+        return;
+      }
       localStorage.setItem("lash_admin", "true");
       navigate("/admin");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
