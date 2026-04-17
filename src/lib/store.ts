@@ -68,7 +68,7 @@ async function ensureClientRecord({
   if (existingError) throw existingError;
 
   if (existing) {
-    const updates: Record<string, string | null> = {};
+    const updates: { name?: string; phone?: string; email?: string } = {};
 
     if (!existing.name && displayName) updates.name = displayName;
     if (!existing.phone && normalizedPhone) updates.phone = normalizedPhone;
