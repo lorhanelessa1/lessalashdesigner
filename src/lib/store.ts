@@ -36,26 +36,111 @@ function generateCode(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, "");
+}
+
+function phoneFromEmail(email?: string | null): string {
+  const localPart = email?.split("@")[0] || "";
+  return normalizePhone(localPart);
+}
+
+async function ensureClientRecord({
+  userId,
+  email,
+  name,
+  phone,
+}: {
+  userId: string;
+  email?: string | null;
+  name?: string | null;
+  phone?: string | null;
+}) {
+  const normalizedPhone = normalizePhone(phone || phoneFromEmail(email));
+  const displayName = name?.trim() || normalizedPhone || "Cliente VIP";
+
+  const { data: existing, error: existingError } = await supabase
+    .from("clients")
+    .select("id, name, phone, email")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+
+  if (existing) {
+    const updates: Record<string, string | null> = {};
+
+    if (!existing.name && displayName) updates.name = displayName;
+    if (!existing.phone && normalizedPhone) updates.phone = normalizedPhone;
+    if (!existing.email && email) updates.email = email;
+
+    if (Object.keys(updates).length > 0) {
+      const { error: updateError } = await supabase
+        .from("clients")
+        .update(updates)
+        .eq("id", existing.id);
+
+      if (updateError) throw updateError;
+    }
+
+    return;
+  }
+
+  const { error: insertError } = await supabase.from("clients").insert({
+    user_id: userId,
+    name: displayName,
+    phone: normalizedPhone,
+    email: email || null,
+    referral_code: generateCode(),
+  });
+
+  if (insertError) throw insertError;
+}
+
 // --- Auth ---
 export async function signUp(email: string, password: string, name: string, phone: string) {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const normalizedPhone = normalizePhone(phone);
+  const displayName = name.trim() || normalizedPhone || "Cliente VIP";
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        name: displayName,
+        phone: normalizedPhone,
+      },
+    },
+  });
+
   if (error) throw error;
   if (!data.user) throw new Error("Erro ao criar conta");
 
-  const { error: clientError } = await supabase.from("clients").insert({
-    user_id: data.user.id,
-    name,
-    phone,
-    email: null,
-    referral_code: generateCode(),
-  });
-  if (clientError) throw clientError;
+  if (data.session) {
+    await ensureClientRecord({
+      userId: data.user.id,
+      email: data.user.email,
+      name: displayName,
+      phone: normalizedPhone,
+    });
+  }
+
   return data;
 }
 
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
+
+  if (data.user) {
+    await ensureClientRecord({
+      userId: data.user.id,
+      email: data.user.email,
+      name: data.user.user_metadata?.name,
+      phone: data.user.user_metadata?.phone || phoneFromEmail(email),
+    });
+  }
+
   return data;
 }
 
@@ -64,7 +149,9 @@ export async function signOut() {
 }
 
 export async function getCurrentUser() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   return user;
 }
 
@@ -84,7 +171,7 @@ export async function getSettings(): Promise<AppSettings> {
     .from("app_settings")
     .select("*")
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!data) return { ...DEFAULT_SETTINGS };
   return {
@@ -97,14 +184,32 @@ export async function getSettings(): Promise<AppSettings> {
 export async function saveSettings(settings: Partial<AppSettings>) {
   const current = await getSettings();
   const merged = { ...current, ...settings };
-  const { data: existing } = await supabase.from("app_settings").select("id").limit(1).single();
+  const payload = {
+    whatsapp_number: merged.whatsappNumber,
+    catalog_pdf_url: merged.catalogPdfUrl,
+    admin_pin: merged.adminPin,
+  };
+
+  const { data: existing, error: existingError } = await supabase
+    .from("app_settings")
+    .select("id")
+    .limit(1)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+
   if (existing) {
-    await supabase.from("app_settings").update({
-      whatsapp_number: merged.whatsappNumber,
-      catalog_pdf_url: merged.catalogPdfUrl,
-      admin_pin: merged.adminPin,
-    }).eq("id", existing.id);
+    const { error: updateError } = await supabase
+      .from("app_settings")
+      .update(payload)
+      .eq("id", existing.id);
+
+    if (updateError) throw updateError;
+    return;
   }
+
+  const { error: insertError } = await supabase.from("app_settings").insert(payload);
+  if (insertError) throw insertError;
 }
 
 // --- Clients ---
@@ -179,7 +284,7 @@ export async function addReferral(clientId: string, friendName: string, friendPh
 
 export async function validateReferral(clientId: string, referralId: string, pin: string): Promise<boolean> {
   const settings = await getSettings();
-  if (pin !== settings.adminPin) return false;
+  if (pin.trim() !== settings.adminPin.trim()) return false;
   const { error } = await supabase
     .from("referrals")
     .update({ validated: true, validated_at: new Date().toISOString() })
@@ -189,10 +294,10 @@ export async function validateReferral(clientId: string, referralId: string, pin
 }
 
 export function getValidatedCount(client: Client): number {
-  return client.referrals.filter(r => r.validated).length;
+  return client.referrals.filter((r) => r.validated).length;
 }
 
 export async function verifyAdminPin(pin: string): Promise<boolean> {
   const settings = await getSettings();
-  return pin === settings.adminPin;
+  return pin.trim() === settings.adminPin.trim();
 }
