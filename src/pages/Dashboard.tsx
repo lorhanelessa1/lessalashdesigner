@@ -45,17 +45,21 @@ export default function Dashboard() {
       if (event === "SIGNED_OUT") navigate("/");
     });
 
-    // Realtime: listen for referral changes
-    const channel = supabase
-      .channel('client-referrals')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'referrals' }, () => {
-        refreshClient();
-      })
-      .subscribe();
+    // Realtime: listen for referral changes scoped to this user
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      channel = supabase
+        .channel(`client-referrals:${user.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'referrals' }, () => {
+          refreshClient();
+        })
+        .subscribe();
+    });
 
     return () => {
       subscription.unsubscribe();
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [navigate]);
 
