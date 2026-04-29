@@ -92,7 +92,6 @@ export default function Login() {
         setError("PIN inválido.");
         return;
       }
-      localStorage.setItem("lash_admin", "true");
       navigate("/admin");
     } finally {
       setLoading(false);
