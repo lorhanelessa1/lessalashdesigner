@@ -1,14 +1,10 @@
 import { useState } from "react";
 import { UserPlus } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { adminInsertClient } from "@/lib/store";
 
 interface Props {
   onBack: () => void;
   onClientAdded: () => void;
-}
-
-function generateCode(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
 export function AdminAddClient({ onBack, onClientAdded }: Props) {
@@ -26,13 +22,8 @@ export function AdminAddClient({ onBack, onClientAdded }: Props) {
     setLoading(true);
     setMsg("");
     try {
-      const { error } = await supabase.from("clients").insert({
-        name: name.trim(),
-        phone: phone.trim(),
-        email: email.trim() || null,
-        referral_code: generateCode(),
-      });
-      if (error) throw error;
+      const id = await adminInsertClient(name.trim(), phone.trim(), email.trim());
+      if (!id) throw new Error("PIN admin inválido ou erro ao cadastrar.");
       setMsg("Cliente adicionada com sucesso!");
       setName(""); setPhone(""); setEmail("");
       onClientAdded();

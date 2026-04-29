@@ -1,5 +1,6 @@
 import { Settings, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { clearAdminPin } from "@/lib/store";
 
 interface AdminHeaderProps {
   view: string;
@@ -26,7 +27,7 @@ export function AdminHeader({ view, onSettingsClick }: AdminHeaderProps) {
           <Settings className="w-4 h-4" />
         </button>
         <button
-          onClick={() => { localStorage.removeItem("lash_admin"); navigate("/"); }}
+          onClick={() => { clearAdminPin(); localStorage.removeItem("lash_admin"); navigate("/"); }}
           className="w-9 h-9 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors active:scale-95"
         >
           <LogOut className="w-4 h-4" />

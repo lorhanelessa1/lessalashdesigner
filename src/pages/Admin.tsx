@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getClients, validateReferral, deleteClient, getSettings, type Client } from "@/lib/store";
+import { getClients, validateReferral, deleteClient, getAdminPin, clearAdminPin, type Client } from "@/lib/store";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { AdminPendingValidations } from "@/components/admin/AdminPendingValidations";
@@ -26,14 +26,15 @@ export default function Admin() {
   };
 
   useEffect(() => {
-    const isAdmin = localStorage.getItem("lash_admin");
-    if (!isAdmin) { navigate("/"); return; }
+    const pin = getAdminPin();
+    if (!pin) { navigate("/"); return; }
     refresh();
   }, [navigate]);
 
   const handleValidate = async (clientId: string, referralId: string) => {
-    const settings = await getSettings();
-    await validateReferral(clientId, referralId, settings.adminPin);
+    const pin = getAdminPin();
+    if (!pin) { clearAdminPin(); navigate("/"); return; }
+    await validateReferral(clientId, referralId, pin);
     const updated = await refresh();
     if (selected) setSelected(updated.find(c => c.id === selected.id) || null);
   };

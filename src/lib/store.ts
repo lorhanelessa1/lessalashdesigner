@@ -29,8 +29,20 @@ export interface AppSettings {
 const DEFAULT_SETTINGS: AppSettings = {
   whatsappNumber: "5500000000000",
   catalogPdfUrl: "",
-  adminPin: "1234",
+  adminPin: "",
 };
+
+const ADMIN_PIN_KEY = "lash_admin_pin";
+
+export function setAdminPin(pin: string) {
+  sessionStorage.setItem(ADMIN_PIN_KEY, pin);
+}
+export function getAdminPin(): string {
+  return sessionStorage.getItem(ADMIN_PIN_KEY) || "";
+}
+export function clearAdminPin() {
+  sessionStorage.removeItem(ADMIN_PIN_KEY);
+}
 
 function generateCode(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -69,20 +81,16 @@ async function ensureClientRecord({
 
   if (existing) {
     const updates: { name?: string; phone?: string; email?: string } = {};
-
     if (!existing.name && displayName) updates.name = displayName;
     if (!existing.phone && normalizedPhone) updates.phone = normalizedPhone;
     if (!existing.email && email) updates.email = email;
-
     if (Object.keys(updates).length > 0) {
       const { error: updateError } = await supabase
         .from("clients")
         .update(updates)
         .eq("id", existing.id);
-
       if (updateError) throw updateError;
     }
-
     return;
   }
 
@@ -93,7 +101,6 @@ async function ensureClientRecord({
     email: email || null,
     referral_code: generateCode(),
   });
-
   if (insertError) throw insertError;
 }
 
@@ -105,12 +112,7 @@ export async function signUp(email: string, password: string, name: string, phon
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      data: {
-        name: displayName,
-        phone: normalizedPhone,
-      },
-    },
+    options: { data: { name: displayName, phone: normalizedPhone } },
   });
 
   if (error) throw error;
@@ -124,14 +126,12 @@ export async function signUp(email: string, password: string, name: string, phon
       phone: normalizedPhone,
     });
   }
-
   return data;
 }
 
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
-
   if (data.user) {
     await ensureClientRecord({
       userId: data.user.id,
@@ -140,7 +140,6 @@ export async function signIn(email: string, password: string) {
       phone: data.user.user_metadata?.phone || phoneFromEmail(email),
     });
   }
-
   return data;
 }
 
@@ -149,9 +148,7 @@ export async function signOut() {
 }
 
 export async function getCurrentUser() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   return user;
 }
 
@@ -165,61 +162,60 @@ export async function getClientByUserId(userId: string): Promise<Client | undefi
   return mapClientFromDb(data);
 }
 
-// --- Settings ---
+// --- Settings (public read via view; admin pin never exposed) ---
 export async function getSettings(): Promise<AppSettings> {
   const { data } = await supabase
-    .from("app_settings")
+    .from("app_settings_public" as any)
     .select("*")
     .limit(1)
     .maybeSingle();
 
   if (!data) return { ...DEFAULT_SETTINGS };
   return {
-    whatsappNumber: data.whatsapp_number,
-    catalogPdfUrl: data.catalog_pdf_url || "",
-    adminPin: data.admin_pin,
+    whatsappNumber: (data as any).whatsapp_number,
+    catalogPdfUrl: (data as any).catalog_pdf_url || "",
+    adminPin: "", // never returned to client
   };
 }
 
-export async function saveSettings(settings: Partial<AppSettings>) {
-  const current = await getSettings();
-  const merged = { ...current, ...settings };
-  const payload = {
-    whatsapp_number: merged.whatsappNumber,
-    catalog_pdf_url: merged.catalogPdfUrl,
-    admin_pin: merged.adminPin,
-  };
-
-  const { data: existing, error: existingError } = await supabase
-    .from("app_settings")
-    .select("id")
-    .limit(1)
-    .maybeSingle();
-
-  if (existingError) throw existingError;
-
-  if (existing) {
-    const { error: updateError } = await supabase
-      .from("app_settings")
-      .update(payload)
-      .eq("id", existing.id);
-
-    if (updateError) throw updateError;
-    return;
-  }
-
-  const { error: insertError } = await supabase.from("app_settings").insert(payload);
-  if (insertError) throw insertError;
+export async function saveSettings(settings: Partial<AppSettings> & { currentPin?: string }) {
+  const pin = settings.currentPin || getAdminPin();
+  if (!pin) throw new Error("PIN admin obrigatório");
+  const { data, error } = await supabase.rpc("update_app_settings", {
+    _pin: pin,
+    _whatsapp_number: settings.whatsappNumber ?? null,
+    _catalog_pdf_url: settings.catalogPdfUrl ?? null,
+    _new_admin_pin: settings.adminPin ?? "",
+  });
+  if (error) throw error;
+  if (!data) throw new Error("PIN admin inválido");
+  if (settings.adminPin) setAdminPin(settings.adminPin);
 }
 
 // --- Clients ---
-async function mapClientFromDb(row: any): Promise<Client> {
-  const { data: referrals } = await supabase
-    .from("referrals")
-    .select("*")
-    .eq("client_id", row.id)
-    .order("created_at", { ascending: true });
+function mapReferralRow(r: any): Referral {
+  return {
+    id: r.id,
+    friendName: r.friend_name,
+    friendPhone: r.friend_phone,
+    validated: r.validated,
+    validatedAt: r.validated_at || undefined,
+    createdAt: r.created_at,
+  };
+}
 
+async function mapClientFromDb(row: any, allReferrals?: any[]): Promise<Client> {
+  let refs: any[];
+  if (allReferrals) {
+    refs = allReferrals.filter((r) => r.client_id === row.id);
+  } else {
+    const { data } = await supabase
+      .from("referrals")
+      .select("*")
+      .eq("client_id", row.id)
+      .order("created_at", { ascending: true });
+    refs = data || [];
+  }
   return {
     id: row.id,
     name: row.name,
@@ -227,70 +223,75 @@ async function mapClientFromDb(row: any): Promise<Client> {
     email: row.email || "",
     referralCode: row.referral_code,
     userId: row.user_id || undefined,
-    referrals: (referrals || []).map((r: any) => ({
-      id: r.id,
-      friendName: r.friend_name,
-      friendPhone: r.friend_phone,
-      validated: r.validated,
-      validatedAt: r.validated_at || undefined,
-      createdAt: r.created_at,
-    })),
+    referrals: refs.map(mapReferralRow),
     createdAt: row.created_at,
   };
 }
 
 export async function getClients(): Promise<Client[]> {
-  const { data } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
-  if (!data) return [];
-  return Promise.all(data.map(mapClientFromDb));
+  const pin = getAdminPin();
+  if (!pin) return [];
+  const { data: clients, error } = await supabase.rpc("admin_list_clients", { _pin: pin });
+  if (error || !clients) return [];
+  const { data: refs } = await supabase.rpc("admin_list_referrals", { _pin: pin });
+  return Promise.all((clients as any[]).map((c) => mapClientFromDb(c, (refs as any[]) || [])));
 }
 
 export async function getClientById(id: string): Promise<Client | undefined> {
+  // Try authenticated own-client read first
   const { data } = await supabase.from("clients").select("*").eq("id", id).maybeSingle();
-  if (!data) return undefined;
-  return mapClientFromDb(data);
+  if (data) return mapClientFromDb(data);
+  // Fallback for admin
+  const all = await getClients();
+  return all.find((c) => c.id === id);
 }
 
 export async function deleteClient(clientId: string): Promise<boolean> {
-  const { error } = await supabase.from("clients").delete().eq("id", clientId);
-  return !error;
+  const pin = getAdminPin();
+  if (!pin) return false;
+  const { data, error } = await supabase.rpc("admin_delete_client", {
+    _pin: pin,
+    _client_id: clientId,
+  });
+  return !error && !!data;
 }
 
 // --- Referrals ---
 export async function addReferral(clientId: string, friendName: string, friendPhone: string): Promise<Referral | null> {
+  const pin = getAdminPin();
+  // Admin path
+  if (pin) {
+    const { data, error } = await supabase.rpc("admin_insert_referral", {
+      _pin: pin,
+      _client_id: clientId,
+      _friend_name: friendName,
+      _friend_phone: friendPhone,
+    });
+    if (error || !data) return null;
+    const { data: row } = await supabase.from("referrals").select("*").eq("id", data as string).maybeSingle();
+    return row ? mapReferralRow(row) : null;
+  }
+  // Client path (own client)
   const { count } = await supabase
     .from("referrals")
     .select("*", { count: "exact", head: true })
     .eq("client_id", clientId);
-
   if ((count || 0) >= 5) return null;
-
   const { data, error } = await supabase
     .from("referrals")
     .insert({ client_id: clientId, friend_name: friendName, friend_phone: friendPhone })
     .select()
     .single();
-
   if (error || !data) return null;
-  return {
-    id: data.id,
-    friendName: data.friend_name,
-    friendPhone: data.friend_phone,
-    validated: data.validated,
-    validatedAt: data.validated_at || undefined,
-    createdAt: data.created_at,
-  };
+  return mapReferralRow(data);
 }
 
-export async function validateReferral(clientId: string, referralId: string, pin: string): Promise<boolean> {
-  const settings = await getSettings();
-  if (pin.trim() !== settings.adminPin.trim()) return false;
-  const { error } = await supabase
-    .from("referrals")
-    .update({ validated: true, validated_at: new Date().toISOString() })
-    .eq("id", referralId)
-    .eq("client_id", clientId);
-  return !error;
+export async function validateReferral(_clientId: string, referralId: string, pin: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("admin_validate_referral", {
+    _pin: pin,
+    _referral_id: referralId,
+  });
+  return !error && !!data;
 }
 
 export function getValidatedCount(client: Client): number {
@@ -298,6 +299,22 @@ export function getValidatedCount(client: Client): number {
 }
 
 export async function verifyAdminPin(pin: string): Promise<boolean> {
-  const settings = await getSettings();
-  return pin.trim() === settings.adminPin.trim();
+  const { data, error } = await supabase.rpc("verify_admin_pin", { _pin: pin });
+  if (error) return false;
+  if (data) setAdminPin(pin);
+  return !!data;
+}
+
+export async function adminInsertClient(name: string, phone: string, email: string): Promise<string | null> {
+  const pin = getAdminPin();
+  if (!pin) return null;
+  const { data, error } = await supabase.rpc("admin_insert_client", {
+    _pin: pin,
+    _name: name,
+    _phone: normalizePhone(phone),
+    _email: email,
+    _referral_code: generateCode(),
+  });
+  if (error) return null;
+  return (data as string) || null;
 }
