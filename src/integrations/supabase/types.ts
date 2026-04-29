@@ -108,10 +108,102 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      app_settings_public: {
+        Row: {
+          catalog_pdf_url: string | null
+          id: string | null
+          updated_at: string | null
+          whatsapp_number: string | null
+        }
+        Insert: {
+          catalog_pdf_url?: string | null
+          id?: string | null
+          updated_at?: string | null
+          whatsapp_number?: string | null
+        }
+        Update: {
+          catalog_pdf_url?: string | null
+          id?: string | null
+          updated_at?: string | null
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      admin_delete_client: {
+        Args: { _client_id: string; _pin: string }
+        Returns: boolean
+      }
+      admin_insert_client: {
+        Args: {
+          _email: string
+          _name: string
+          _phone: string
+          _pin: string
+          _referral_code: string
+        }
+        Returns: string
+      }
+      admin_insert_referral: {
+        Args: {
+          _client_id: string
+          _friend_name: string
+          _friend_phone: string
+          _pin: string
+        }
+        Returns: string
+      }
+      admin_list_clients: {
+        Args: { _pin: string }
+        Returns: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string
+          referral_code: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "clients"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_list_referrals: {
+        Args: { _pin: string }
+        Returns: {
+          client_id: string
+          created_at: string
+          friend_name: string
+          friend_phone: string
+          id: string
+          validated: boolean
+          validated_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "referrals"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_validate_referral: {
+        Args: { _pin: string; _referral_id: string }
+        Returns: boolean
+      }
+      update_app_settings: {
+        Args: {
+          _catalog_pdf_url: string
+          _new_admin_pin: string
+          _pin: string
+          _whatsapp_number: string
+        }
+        Returns: boolean
+      }
+      verify_admin_pin: { Args: { _pin: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
