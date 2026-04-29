@@ -17,16 +17,20 @@ export function AdminSettings({ onBack }: Props) {
     getSettings().then(s => {
       setWhatsappNumber(s.whatsappNumber);
       setCatalogUrl(s.catalogPdfUrl);
-      setAdminPin(s.adminPin);
+      // PIN nunca é exposto; deixe vazio para "manter atual"
+      setAdminPin("");
     });
   }, []);
 
   const handleSave = async () => {
     setLoading(true);
     try {
-      await saveSettings({ whatsappNumber, catalogPdfUrl: catalogUrl, adminPin: adminPin || "1234" });
+      await saveSettings({ whatsappNumber, catalogPdfUrl: catalogUrl, adminPin });
       setMsg("Configurações salvas!");
+      setAdminPin("");
       setTimeout(() => setMsg(""), 2000);
+    } catch (e: any) {
+      setMsg(e.message || "Erro ao salvar.");
     } finally { setLoading(false); }
   };
 
@@ -45,8 +49,8 @@ export function AdminSettings({ onBack }: Props) {
           <input type="url" placeholder="https://exemplo.com/catalogo.pdf" value={catalogUrl} onChange={(e) => setCatalogUrl(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow" />
         </div>
         <div className="p-4 rounded-xl bg-card border border-border/50 shadow-sm space-y-2">
-          <div className="flex items-center gap-2"><Shield className="w-4 h-4 text-gold" /><label className="text-sm font-body font-medium">PIN Admin</label></div>
-          <input type="password" placeholder="****" value={adminPin} onChange={(e) => setAdminPin(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow" />
+          <div className="flex items-center gap-2"><Shield className="w-4 h-4 text-gold" /><label className="text-sm font-body font-medium">Novo PIN Admin (opcional)</label></div>
+          <input type="password" placeholder="Deixe em branco para manter o atual" value={adminPin} onChange={(e) => setAdminPin(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-muted/30 border border-border/50 text-sm font-body placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-gold-light/50 transition-shadow" />
         </div>
       </div>
 
