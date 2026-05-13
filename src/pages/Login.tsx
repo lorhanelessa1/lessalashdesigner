@@ -103,10 +103,25 @@ export default function Login() {
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative bg-no-repeat bg-cover bg-center"
-      style={{ backgroundImage: `url(${loginBg})` }}
-    >
+    <>
+      <style>{`
+        .login-bg {
+          background-image: url('${loginBgMobile}');
+        }
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .login-bg {
+            background-image: url('${loginBgTablet}');
+          }
+        }
+        @media (min-width: 1024px) {
+          .login-bg {
+            background-image: url('${loginBgDesktop}');
+          }
+        }
+      `}</style>
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative bg-no-repeat bg-cover bg-center login-bg"
+      >
       <button
         onClick={() => setShowAdmin(true)}
         className="absolute top-5 right-5 w-8 h-8 rounded-full bg-muted/30 flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors"
