@@ -5,6 +5,7 @@ import { signIn, signUp, verifyAdminPin } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import { ServicesCatalog } from "@/components/ServicesCatalog";
+import loginBg from "@/assets/login-bg.png";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -99,7 +100,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative">
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative bg-no-repeat bg-cover bg-center"
+      style={{ backgroundImage: `url(${loginBg})` }}
+    >
       <button
         onClick={() => setShowAdmin(true)}
         className="absolute top-5 right-5 w-8 h-8 rounded-full bg-muted/30 flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors"
