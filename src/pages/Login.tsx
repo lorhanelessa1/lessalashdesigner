@@ -232,5 +232,6 @@ export default function Login() {
         Exclusivo para clientes VIP
       </p>
     </div>
+    </>
   );
 }
