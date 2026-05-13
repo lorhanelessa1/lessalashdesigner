@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Settings, Sparkles, ArrowLeft } from "lucide-react";
 import { signIn, signUp, verifyAdminPin } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
+import loginBgMobile from "@/assets/login-bg-mobile.jpg";
+import loginBgTablet from "@/assets/login-bg-tablet.jpg";
+import loginBgDesktop from "@/assets/login-bg-desktop.jpg";
 import { BrandHeader } from "@/components/BrandHeader";
 import { ServicesCatalog } from "@/components/ServicesCatalog";
 import loginBg from "@/assets/login-bg.png";
@@ -100,10 +103,25 @@ export default function Login() {
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative bg-no-repeat bg-cover bg-center"
-      style={{ backgroundImage: `url(${loginBg})` }}
-    >
+    <>
+      <style>{`
+        .login-bg {
+          background-image: url('${loginBgMobile}');
+        }
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .login-bg {
+            background-image: url('${loginBgTablet}');
+          }
+        }
+        @media (min-width: 1024px) {
+          .login-bg {
+            background-image: url('${loginBgDesktop}');
+          }
+        }
+      `}</style>
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative bg-no-repeat bg-cover bg-center login-bg"
+      >
       <button
         onClick={() => setShowAdmin(true)}
         className="absolute top-5 right-5 w-8 h-8 rounded-full bg-muted/30 flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors"
@@ -214,5 +232,6 @@ export default function Login() {
         Exclusivo para clientes VIP
       </p>
     </div>
+    </>
   );
 }
