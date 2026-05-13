@@ -120,7 +120,7 @@ export default function Login() {
         }
       `}</style>
       <div
-        className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative bg-no-repeat bg-cover bg-center login-bg"
+        className="min-h-screen flex flex-col items-center justify-center px-6 bg-black relative bg-no-repeat bg-cover bg-center login-bg"
       >
       <button
         onClick={() => setShowAdmin(true)}
