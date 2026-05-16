@@ -240,7 +240,6 @@ export default function Login() {
       <p className="mt-8 text-[10px] tracking-[0.2em] uppercase text-muted-foreground/60 font-body" style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 200ms forwards", opacity: 0 }}>
         Exclusivo para clientes VIP
       </p>
-      </div>
     </div>
     </>
   );
