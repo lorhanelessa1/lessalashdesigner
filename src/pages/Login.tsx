@@ -128,7 +128,7 @@ export default function Login() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at center, hsla(350, 45%, 95%, 0.35) 0%, hsla(350, 40%, 92%, 0.6) 45%, hsla(350, 35%, 88%, 0.85) 100%), linear-gradient(180deg, hsla(38, 45%, 55%, 0.08) 0%, transparent 30%, transparent 70%, hsla(0, 0%, 8%, 0.15) 100%)",
+            "radial-gradient(ellipse 60% 45% at center, hsla(350, 45%, 95%, 0.55) 0%, hsla(350, 40%, 92%, 0.25) 55%, transparent 80%), linear-gradient(180deg, transparent 0%, transparent 70%, hsla(0, 0%, 8%, 0.12) 100%)",
         }}
       />
       <button
