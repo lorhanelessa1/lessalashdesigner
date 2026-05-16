@@ -131,10 +131,9 @@ export default function Login() {
             "radial-gradient(ellipse at center, hsla(350, 45%, 95%, 0.35) 0%, hsla(350, 40%, 92%, 0.6) 45%, hsla(350, 35%, 88%, 0.85) 100%), linear-gradient(180deg, hsla(38, 45%, 55%, 0.08) 0%, transparent 30%, transparent 70%, hsla(0, 0%, 8%, 0.15) 100%)",
         }}
       />
-      <div className="relative z-10 contents">
       <button
         onClick={() => setShowAdmin(true)}
-        className="absolute top-5 right-5 w-8 h-8 rounded-full bg-muted/30 flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+        className="absolute top-5 right-5 z-20 w-8 h-8 rounded-full bg-muted/30 flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors"
       >
         <Settings className="w-3.5 h-3.5" />
       </button>
