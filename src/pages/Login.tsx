@@ -122,6 +122,16 @@ export default function Login() {
       <div
         className="min-h-screen flex flex-col items-center justify-center px-6 bg-background relative bg-no-repeat bg-cover bg-center login-bg"
       >
+      {/* Sophisticated luxury overlay for legibility */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, hsla(350, 45%, 95%, 0.35) 0%, hsla(350, 40%, 92%, 0.6) 45%, hsla(350, 35%, 88%, 0.85) 100%), linear-gradient(180deg, hsla(38, 45%, 55%, 0.08) 0%, transparent 30%, transparent 70%, hsla(0, 0%, 8%, 0.15) 100%)",
+        }}
+      />
+      <div className="relative z-10 contents">
       <button
         onClick={() => setShowAdmin(true)}
         className="absolute top-5 right-5 w-8 h-8 rounded-full bg-muted/30 flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground transition-colors"
@@ -231,6 +241,7 @@ export default function Login() {
       <p className="mt-8 text-[10px] tracking-[0.2em] uppercase text-muted-foreground/60 font-body" style={{ animation: "float-up 0.6s cubic-bezier(0.16,1,0.3,1) 200ms forwards", opacity: 0 }}>
         Exclusivo para clientes VIP
       </p>
+      </div>
     </div>
     </>
   );
