@@ -1,3 +1,5 @@
+import { Flower } from "lucide-react";
+
 interface BrandHeaderProps {
   size?: "sm" | "lg";
 }
@@ -12,9 +14,7 @@ export function BrandHeader({ size = "lg" }: BrandHeaderProps) {
           isLg ? "w-16 h-16" : "w-10 h-10"
         }`}
       >
-        <span className={isLg ? "text-3xl leading-none" : "text-lg leading-none"} aria-hidden>
-          🌸
-        </span>
+        <Flower className={isLg ? "w-8 h-8 text-primary-foreground" : "w-5 h-5 text-primary-foreground"} strokeWidth={1.75} />
       </div>
 
       {isLg && (
