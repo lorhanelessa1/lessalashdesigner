@@ -1,4 +1,4 @@
-import { Diamond } from "lucide-react";
+import { Flower2 } from "lucide-react";
 
 interface BrandHeaderProps {
   size?: "sm" | "lg";
@@ -14,7 +14,7 @@ export function BrandHeader({ size = "lg" }: BrandHeaderProps) {
           isLg ? "w-16 h-16" : "w-10 h-10"
         }`}
       >
-        <Diamond className={isLg ? "w-7 h-7 text-primary-foreground" : "w-4 h-4 text-primary-foreground"} />
+        <Flower2 className={isLg ? "w-7 h-7 text-primary-foreground" : "w-4 h-4 text-primary-foreground"} />
       </div>
 
       {isLg && (
